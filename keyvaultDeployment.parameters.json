@@ -1,0 +1,46 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+        "adminUsername": {
+        "reference": {
+            "keyVault": {
+                "id": "/subscriptions/3c883e67-6e1d-4170-b9f1-12aceb454141/resourceGroups/MpSZhanfeiYuanRG/providers/Microsoft.KeyVault/vaults/kv14test1"
+                },
+            "secretName": "adminUsername"
+            }
+        },
+        "adminPassword": {
+            "reference": {
+                "keyVault": {
+                    "id": "/subscriptions/3c883e67-6e1d-4170-b9f1-12aceb454141/resourceGroups/MpSZhanfeiYuanRG/providers/Microsoft.KeyVault/vaults/kv14test1"
+                    },
+                "secretName": "adminPassword"
+                }
+        },
+        "virtualMachineName": {
+            "value": "[parameters('virtualMachineName')]"
+        },
+        "virtualNetworkId": {
+            "value": "[parameters('virtualNetworkId')]"
+        }, 
+        "subnetName": {
+            "value": "[parameters('subnetName')]"
+        },
+        "Environment": {
+            "value": "[parameters('Environment')]"
+        },
+        "BackupTags": {
+            "value": "[parameters('BackupTags')]"
+        },
+        "logAnalyticsWorkspaceName": {
+            "value": "[parameters('logAnalyticsWorkspaceName')]"
+        },
+        "OS Type": {
+            "value": "[parameters('OS Type')]"
+        },
+        "VM Size": {
+            "value": "[parameters('VM Size')]"
+        }
+    }
+}

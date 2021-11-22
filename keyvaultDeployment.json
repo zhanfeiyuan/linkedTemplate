@@ -1,0 +1,215 @@
+{     
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {      
+        "adminUsername": {
+            "type": "secureString"
+        },
+        "adminPassword": {
+            "type":"secureString"
+        },
+        "Environment": {
+            "type": "string"
+        },
+        "virtualMachineName": {
+            "type": "string"
+        },
+        "VM Size": {
+            "type": "string"
+        },
+        "OS Type": {
+            "type": "string"
+        },    
+        "virtualNetworkId": {
+            "type": "string"
+        }, 
+        "subnetName": {
+            "type": "string"
+        },
+        "BackupTags": {
+            "type": "string"
+        },
+        "logAnalyticsWorkspaceName":{
+            "type": "string"
+        }
+    },
+    "variables": {
+        "suffix": "[substring(uniqueString(resourceGroup().id),0,3)]",
+        "VMName": "[concat(parameters('Environment'), parameters('virtualMachineName'))]",
+
+        "networkInterfaceName": "[concat(variables('VMName'), '-nic-',variables('suffix'))]",
+        "osDiskType": "Premium_LRS",
+
+        "ServerSize":{
+            "Small":{
+                "VMSize": "Standard_B2s"
+            },
+            "Medium":{
+                "VMSize": "Standard_D2s_v3"
+            }
+        },
+
+        "workspaceIdAndKey": {
+            "MyWorkspace": {
+                "workspaceId":"1e3ce6d3-f11e-4780-bee4-6eecf545b730",
+                "workspaceKey": "AvHylCJaa8zDowzK506NvcSkNWCpaF6KftfhB2VDbYVM/diBZAIJBtr+2xCPBQHUjMa/RajdvilTpdxZGSzwzg=="
+            },
+            "Workspace2": {
+                "workspaceId":"1e3ce6d3-f11e-4780-bee4-6eecf545b730",
+                "workspaceKey": "AvHylCJaa8zDowzK506NvcSkNWCpaF6KftfhB2VDbYVM/diBZAIJBtr+2xCPBQHUjMa/RajdvilTpdxZGSzwzg=="
+            },
+            "Workspace3": {
+                "workspaceId":"1e3ce6d3-f11e-4780-bee4-6eecf545b730",
+                "workspaceKey": "AvHylCJaa8zDowzK506NvcSkNWCpaF6KftfhB2VDbYVM/diBZAIJBtr+2xCPBQHUjMa/RajdvilTpdxZGSzwzg=="
+            },
+            "Workspace4": {
+                "workspaceId":"1e3ce6d3-f11e-4780-bee4-6eecf545b730",
+                "workspaceKey": "AvHylCJaa8zDowzK506NvcSkNWCpaF6KftfhB2VDbYVM/diBZAIJBtr+2xCPBQHUjMa/RajdvilTpdxZGSzwzg=="
+            }
+        },
+        
+        "location": "[resourceGroup().location]",
+        "tagpolicy": "[concat(subscription().displayName, parameters('BackupTags'))]",
+        "patchMode": "AutomaticByOS",
+
+        "vnetId": "[parameters('virtualNetworkId')]",
+        "subnetRef": "[concat(variables('vnetId'), '/subnets/', parameters('subnetName'))]",
+        "aadLoginExtensionName": "AADLoginForWindows"
+    },
+    "resources": [
+        {
+            "name": "[variables('networkInterfaceName')]",
+            "type": "Microsoft.Network/networkInterfaces",
+            "apiVersion": "2018-10-01",
+            "location": "[variables('location')]",
+            "dependsOn": [],
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "ipconfig1",
+                        "properties": {
+                            "subnet": {
+                                "id": "[variables('subnetRef')]"
+                            },
+                            "privateIPAllocationMethod": "Dynamic"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "name": "[variables('VMName')]",
+            "type": "Microsoft.Compute/virtualMachines",
+            "apiVersion": "2020-12-01",
+            "location": "[variables('location')]",
+            "tags": {"Backup": "[variables('tagpolicy')]"},
+            "dependsOn": [
+                "[concat('Microsoft.Network/networkInterfaces/', variables('networkInterfaceName'))]"
+            ],
+            "properties": {
+                "hardwareProfile": {
+                    "vmSize": "[variables('ServerSize')[parameters('VM Size')].VMsize]"
+                },
+                "storageProfile": {
+                    "osDisk": {
+                        "createOption": "fromImage",
+                        "managedDisk": {
+                            "storageAccountType": "[variables('osDiskType')]"
+                        }
+                    },
+                    "imageReference": {
+                        "publisher": "MicrosoftWindowsServer",
+                        "offer": "WindowsServer",
+                        "sku": "[parameters('OS Type')]",
+                        "version": "latest"
+                    }
+                },
+                "networkProfile": {
+                    "networkInterfaces": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('networkInterfaceName'))]"
+                        }
+                    ]
+                },
+                "osProfile": {
+                    "computerName": "[variables('VMName')]",
+                    "adminUsername": "[parameters('adminUsername')]",
+                    "adminPassword": "[parameters('adminPassword')]",
+                    "windowsConfiguration": {
+                        "enableAutomaticUpdates": true,
+                        "provisionVmAgent": true,
+                        "patchSettings": {
+                            "patchMode": "[variables('patchMode')]"
+                        }
+                    }
+                },
+                "licenseType": "Windows_Server",
+                "diagnosticsProfile": {
+                    "bootDiagnostics": {
+                        "enabled": true
+                    }
+                }
+            },
+            "identity": {
+                "type": "systemAssigned"
+            }
+        },
+        {
+            "name": "[concat(variables('VMName'),'/', variables('aadLoginExtensionName'))]",
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "apiVersion": "2018-10-01",
+            "location": "[variables('location')]",
+            "properties": {
+                "publisher": "Microsoft.Azure.ActiveDirectory",
+                "type": "AADLoginForWindows",
+                "typeHandlerVersion": "0.3",
+                "autoUpgradeMinorVersion": true
+            },
+            "dependsOn": [
+                "[concat('Microsoft.Compute/virtualMachines/', variables('VMName'))]"
+            ]
+        },
+        {
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "apiVersion": "2020-12-01",
+            "name": "[concat(variables('VMName'), '/AzureNetworkWatcherExtension')]",
+            "location": "[variables('location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Compute/virtualMachines', variables('VMName'))]"
+            ],
+            "properties": {
+                "autoUpgradeMinorVersion": true,
+                "publisher": "Microsoft.Azure.NetworkWatcher",
+                "type": "NetworkWatcherAgentWindows",
+                "typeHandlerVersion": "1.4"
+            }
+        },
+        {
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "name": "[concat(variables('vmName'), '/Microsoft.Insights.LogAnalyticsAgent')]",
+            "apiVersion": "2015-06-15",
+            "location": "[variables('location')]",
+            "dependsOn": [
+                "[concat('Microsoft.Compute/virtualMachines/', variables('vmName'))]"
+            ],
+            "properties": {
+                "publisher": "Microsoft.EnterpriseCloud.Monitoring",
+                "type": "MicrosoftMonitoringAgent",
+                "typeHandlerVersion": "1.0",
+                "autoUpgradeMinorVersion": true,
+                "settings": {
+                    "workspaceId": "[variables('workspaceIdAndKey')[parameters('logAnalyticsWorkspaceName')].workspaceId]"
+                },
+                "protectedSettings": {
+                    "workspaceKey": "[variables('workspaceIdAndKey')[parameters('logAnalyticsWorkspaceName')].workspaceKey]"
+                }
+            }
+        }
+    ],
+    "outputs":{
+        "adminUsername": {
+            "type": "secureString",
+            "value": "[parameters('adminUsername')]"
+        }
+    }
+}
